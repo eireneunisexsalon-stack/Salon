@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  
+  --color-gold: #D4AF37;
+  --color-gold-light: #F3E5AB;
+  --color-gold-dark: #AA8C2C;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes slowPulse {
+  0%, 100% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.15); }
+}
+
+@keyframes slowZoom {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fadeInUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-slow-pulse {
+  animation: slowPulse 10s ease-in-out infinite;
+}
+
+.animate-slow-zoom {
+  animation: slowZoom 20s ease-in-out infinite;
+}
+
+.delay-1 { animation-delay: 0.3s; }
+.delay-2 { animation-delay: 0.6s; }
+.delay-3 { animation-delay: 0.9s; }
+.delay-4 { animation-delay: 1.2s; }
+
+@keyframes kenBurns {
+  0% { transform: scale(1) translate(0, 0); }
+  25% { transform: scale(1.1) translate(2%, 2%); }
+  50% { transform: scale(1.2) translate(-2%, 1%); }
+  75% { transform: scale(1.1) translate(-1%, -2%); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 40px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.animate-ken-burns {
+  animation: kenBurns 40s ease-in-out infinite;
+}
+
+.animate-drift {
+  animation: drift 15s ease-in-out infinite;
+}
+
+.particle {
+  position: absolute;
+  background: radial-gradient(circle, #d4af37 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.3;
+}
