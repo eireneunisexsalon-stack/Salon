@@ -23,8 +23,8 @@ export default function GalleryAdmin() {
 
       if (error) throw error;
       setImages(data || []);
-    } catch (error) {
-      console.error('Error fetching images:', error);
+    } catch (error: any) {
+      console.error('Error fetching images:', error.message || error);
     } finally {
       setLoading(false);
     }

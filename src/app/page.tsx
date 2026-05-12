@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { getUser } from './actions/auth';
+import Header from './components/Header';
 
 export default async function Home() {
-  const user = await getUser();
 
   // Fetch Gallery Images
   const { data: galleryImages } = await supabase
@@ -22,25 +21,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen selection:bg-gold selection:text-black">
-      {/* Navigation (Glassmorphism) */}
-      <header className="fixed w-full py-5 px-8 flex justify-between items-center z-50 transition-all duration-300 bg-black/60 backdrop-blur-xl border-b border-white/5">
-        <div className="text-xl md:text-2xl font-black tracking-[0.1em] text-white italic">
-          EIRENE<span className="text-gold">SALON</span>
-        </div>
-        <nav className="hidden md:flex gap-10 text-[10px] uppercase tracking-[0.2em] font-black text-gray-400">
-          <Link href="/" className="text-gold transition-colors">Home</Link>
-          <Link href="/services" className="hover:text-gold transition-colors">Services</Link>
-          <Link href="/gallery" className="hover:text-gold transition-colors">Gallery</Link>
-          {user ? (
-            <Link href="/my-bookings" className="text-white hover:text-gold transition-colors underline decoration-gold/50 underline-offset-4">My Bookings</Link>
-          ) : (
-            <Link href="/login" className="hover:text-gold transition-colors">Login</Link>
-          )}
-        </nav>
-        <Link href="/book" className="px-7 py-3 bg-gold text-black uppercase tracking-[0.2em] text-[10px] font-black rounded-xl hover:bg-white transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)]">
-          Book Now
-        </Link>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <main className="relative flex flex-col items-center justify-center min-h-screen text-center px-4 overflow-hidden pt-20">

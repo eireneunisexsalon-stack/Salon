@@ -12,12 +12,18 @@ export async function createBooking(data: {
   total_amount?: number;
   status?: string;
   user_id?: string;
+  receipt_url?: string;
 }) {
   try {
+    // Get all services to map categories
+    const { data: services } = await supabase.from("services").select("name, category");
+    const serviceMap = new Map(services?.map(s => [s.name, s.category]) || []);
+    const requestedCategory = serviceMap.get(data.service_name);
+
     // Check if slot is already booked for that date/time
-    const { data: existingBooking, error: checkError } = await supabase
+    const { data: existingBookings, error: checkError } = await supabase
       .from("bookings")
-      .select("id")
+      .select("id, service_name")
       .eq("booking_date", data.booking_date)
       .eq("time_slot", data.time_slot)
       .in("status", ["pending", "confirmed", "pending_verification"]);
@@ -32,8 +38,11 @@ export async function createBooking(data: {
       return { success: false, error: "Failed to check slot availability" };
     }
     
-    if (existingBooking && existingBooking.length > 0) {
-      return { success: false, error: "This time slot is already booked. Please choose another." };
+    // Find if there's an existing booking in the exact SAME category
+    const conflict = existingBookings?.find(b => serviceMap.get(b.service_name) === requestedCategory);
+
+    if (conflict) {
+      return { success: false, error: "This time slot is already booked for this service category. Please choose another." };
     }
     
     // Insert the new booking
@@ -49,7 +58,8 @@ export async function createBooking(data: {
           deposit_amount: data.deposit_amount || 0,
           total_amount: data.total_amount || 0,
           status: data.status || "pending",
-          user_id: data.user_id || null
+          user_id: data.user_id || null,
+          receipt_url: data.receipt_url || null
         }
       ])
       .select("id")
@@ -62,7 +72,20 @@ export async function createBooking(data: {
         hint: insertError.hint,
         code: insertError.code
       });
-      return { success: false, error: "Failed to create booking" };
+      return { success: false, error: `Failed to create booking: ${insertError.message}` };
+    }
+    
+    // Add pending wallet transaction for the 10% advance
+    if (newBooking?.id && data.deposit_amount) {
+      await supabase.from("wallet_transactions").insert([
+        {
+          booking_id: newBooking.id,
+          amount: data.deposit_amount,
+          type: "credit",
+          status: "pending",
+          description: `Advance 10% payment for booking ${newBooking.id}`
+        }
+      ]);
     }
     
     return { success: true, id: newBooking.id };
@@ -72,25 +95,27 @@ export async function createBooking(data: {
   }
 }
 
-export async function getBookedSlots(date: string) {
+export async function getBookedSlots(date: string, category: string) {
   try {
-    const { data, error } = await supabase
+    const { data: bookings, error } = await supabase
       .from("bookings")
-      .select("time_slot")
+      .select("time_slot, service_name")
       .eq("booking_date", date)
-      .in("status", ["pending", "confirmed"]);
+      .in("status", ["pending", "confirmed", "pending_verification"]);
       
-    if (error) {
-      console.error("Error fetching booked slots:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
-      return [];
-    }
-    
-    return data ? data.map(b => b.time_slot) : [];
+    if (error || !bookings) return [];
+
+    const { data: services } = await supabase
+      .from("services")
+      .select("name, category");
+
+    if (!services) return [];
+
+    const serviceCategoryMap = new Map(services.map(s => [s.name, s.category]));
+
+    const categoryBookings = bookings.filter(b => serviceCategoryMap.get(b.service_name) === category);
+
+    return categoryBookings.map(b => b.time_slot);
   } catch (error) {
     console.error("Exception fetching booked slots:", error);
     return [];

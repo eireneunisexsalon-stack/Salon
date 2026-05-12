@@ -111,6 +111,12 @@ export default function AdminDashboard() {
                       <span className={`text-[8px] uppercase font-black tracking-widest ${booking.payment_status === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
                         {booking.payment_status === 'paid' ? '✓ Received' : '⌛ Awaiting'}
                       </span>
+                      {booking.receipt_url && (
+                        <a href={booking.receipt_url} target="_blank" rel="noopener noreferrer" className="block mt-2 text-[9px] text-blue-400 hover:text-blue-300 hover:underline uppercase tracking-widest font-bold flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          View Receipt
+                        </a>
+                      )}
                     </td>
                     <td className="p-6">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
@@ -135,11 +141,11 @@ export default function AdminDashboard() {
                         onChange={(e) => handleStatusChange(booking.id, e.target.value)}
                         className="bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-lg p-2 outline-none"
                       >
-                        <option value="pending">Pending</option>
-                        <option value="pending_verification">Verifying</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="completed">Completed</option>
+                        <option value="pending" className="bg-black text-white">Pending</option>
+                        <option value="pending_verification" className="bg-black text-white">Verifying</option>
+                        <option value="confirmed" className="bg-black text-white">Confirmed</option>
+                        <option value="cancelled" className="bg-black text-white">Cancelled</option>
+                        <option value="completed" className="bg-black text-white">Completed</option>
                       </select>
                     </td>
                   </tr>

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -27,7 +28,8 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/');
+      const redirectTo = searchParams.get('redirectTo') || '/';
+      router.push(redirectTo);
       router.refresh();
     }
     setIsLoading(false);
@@ -90,10 +92,18 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 text-center text-[10px] uppercase tracking-widest text-gray-500">
-            Don't have an account? <Link href="/signup" className="text-gold font-bold hover:underline">Sign Up</Link>
+            Don't have an account? <Link href={searchParams.get('redirectTo') ? `/signup?redirectTo=${encodeURIComponent(searchParams.get('redirectTo') as string)}` : '/signup'} className="text-gold font-bold hover:underline">Sign Up</Link>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

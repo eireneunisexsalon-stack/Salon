@@ -28,14 +28,14 @@ export async function addProduct(product: { name: string, brand: string, price: 
       .insert([product]);
 
     if (error) {
-      console.error("Error adding product:", error);
-      return { success: false, error: "Failed to add product" };
+      console.error("Error adding product:", error.message, error.details);
+      return { success: false, error: error.message };
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Exception adding product:", error);
-    return { success: false, error: "An exception occurred" };
+    return { success: false, error: error.message || "An exception occurred" };
   }
 }
 

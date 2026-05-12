@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function SignupPage() {
+function SignupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,7 +35,8 @@ export default function SignupPage() {
       setError(error.message);
     } else {
       alert("Account created! Please check your email for a confirmation link.");
-      router.push('/login');
+      const redirectTo = searchParams.get('redirectTo');
+      router.push(redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login');
     }
     setIsLoading(false);
   }
@@ -103,10 +105,18 @@ export default function SignupPage() {
           </form>
 
           <div className="mt-8 text-center text-[10px] uppercase tracking-widest text-gray-500">
-            Already have an account? <Link href="/login" className="text-gold font-bold hover:underline">Log In</Link>
+            Already have an account? <Link href={searchParams.get('redirectTo') ? `/login?redirectTo=${encodeURIComponent(searchParams.get('redirectTo') as string)}` : '/login'} className="text-gold font-bold hover:underline">Log In</Link>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

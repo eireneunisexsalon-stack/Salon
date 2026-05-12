@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getStaff, addStaff, deleteStaff } from '../../actions/staff';
+import { getStaff, addStaff, deleteStaff, updateStaffAttendance } from '../../actions/staff';
 
 export default function StaffManagement() {
   const [staff, setStaff] = useState<any[]>([]);
@@ -56,6 +56,26 @@ export default function StaffManagement() {
     setStaff(prev => prev.filter(s => s.id !== id));
     
     await deleteStaff(id);
+  };
+
+  const handleAttendanceChange = async (id: string, newStatus: string) => {
+    // Optimistic UI update
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, attendance_status: newStatus } : s));
+    
+    const result = await updateStaffAttendance(id, newStatus);
+    if (!result.success) {
+      alert("Failed to update attendance");
+      await fetchStaff(); // Revert on failure
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Present': return 'bg-green-500';
+      case 'Absent': return 'bg-red-500';
+      case 'On Leave': return 'bg-yellow-500';
+      default: return 'bg-gray-500'; // Covers missing or undefined statuses
+    }
   };
 
   return (
@@ -135,6 +155,7 @@ export default function StaffManagement() {
               <tr className="bg-white/5 border-b border-white/10">
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Name</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Role</th>
+                <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Attendance (Today)</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Salary (Monthly)</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Contact</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400 text-right">Actions</th>
@@ -154,6 +175,20 @@ export default function StaffManagement() {
                       {member.role}
                     </span>
                   </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(member.attendance_status || 'Present')}`}></div>
+                      <select 
+                        value={member.attendance_status || 'Present'}
+                        onChange={(e) => handleAttendanceChange(member.id, e.target.value)}
+                        className="bg-transparent text-sm text-gray-300 outline-none border border-white/10 rounded px-2 py-1 focus:border-gold hover:border-white/30 transition-colors"
+                      >
+                        <option value="Present" className="bg-black text-white">Present</option>
+                        <option value="Absent" className="bg-black text-white">Absent</option>
+                        <option value="On Leave" className="bg-black text-white">On Leave</option>
+                      </select>
+                    </div>
+                  </td>
                   <td className="p-4 text-gray-300 text-sm">
                     {member.salary ? `₹${member.salary.toLocaleString('en-IN')}` : '-'}
                   </td>
@@ -170,7 +205,7 @@ export default function StaffManagement() {
               ))}
               {staff.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     No staff members found. Add your team using the form above!
                   </td>
                 </tr>

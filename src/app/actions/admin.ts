@@ -29,6 +29,31 @@ export async function getBookings() {
 
 export async function updateBookingStatus(id: string, status: string) {
   try {
+    // If marking as completed, add the final 90% payment to the wallet
+    if (status === 'completed') {
+      const { data: booking } = await supabase.from("bookings").select("*").eq("id", id).single();
+      if (booking) {
+        const remainingAmount = (booking.total_amount || 0) - (booking.deposit_amount || 0);
+        if (remainingAmount > 0) {
+          // Check if we already added it to prevent duplicates
+          const { data: existingTx } = await supabase.from("wallet_transactions")
+            .select("id")
+            .eq("booking_id", id)
+            .eq("description", `Final payment for booking ${id}`);
+            
+          if (!existingTx || existingTx.length === 0) {
+            await supabase.from("wallet_transactions").insert([{
+              booking_id: id,
+              amount: remainingAmount,
+              type: "credit",
+              status: "success",
+              description: `Final payment for booking ${id}`
+            }]);
+          }
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("bookings")
       .update({ status })
@@ -160,18 +185,12 @@ export async function verifyPaymentManually(bookingId: string) {
 
     if (updateError) throw updateError;
 
-    // 3. Record Wallet Transaction (only the deposit amount)
+    // 3. Update existing Wallet Transaction from pending to success
     const { error: txError } = await supabase
       .from("wallet_transactions")
-      .insert([
-        {
-          booking_id: bookingId,
-          amount: booking.deposit_amount || 0,
-          type: "credit",
-          status: "success",
-          description: `Advance 10% payment for booking ${bookingId}`
-        }
-      ]);
+      .update({ status: "success" })
+      .eq("booking_id", bookingId)
+      .eq("status", "pending");
 
     if (txError) throw txError;
 

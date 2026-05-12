@@ -7,20 +7,52 @@ import { supabase } from '@/lib/supabase';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [authorized, setAuthorized] = useState(false);
+  const [newBookingAlert, setNewBookingAlert] = useState<any>(null);
   const router = useRouter();
+
+  // Play Notification Sound
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.volume = 1.0;
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log('Audio autoplay prevented by browser. Click anywhere on the page to allow sound.', error);
+        });
+      }
+    } catch (e) {
+      console.log('Audio notification failed', e);
+    }
+  };
 
   useEffect(() => {
     async function checkAdmin() {
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user || user.email?.toLowerCase() !== 'eireneunisexsalon@gmail.com') {
-        alert("Detected User: " + (user?.email || "No User Logged In"));
         router.push('/login');
       } else {
         setAuthorized(true);
       }
     }
     checkAdmin();
+
+    // Set up Realtime listener for new bookings
+    const channel = supabase
+      .channel('public:bookings')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, payload => {
+        playNotificationSound();
+        setNewBookingAlert(payload.new);
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => setNewBookingAlert(null), 8000);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [router]);
 
   if (!authorized) {
@@ -74,6 +106,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 overflow-y-auto bg-[#050505]">
         {children}
       </main>
+
+      {/* Real-time Toast Notification */}
+      {newBookingAlert && (
+        <div className="fixed bottom-8 right-8 bg-[#0a0a0a] border border-gold/50 shadow-[0_0_40px_rgba(212,175,55,0.2)] p-6 rounded-2xl z-50 animate-in slide-in-from-bottom-5 duration-500">
+          <div className="flex items-center gap-5">
+            <div className="relative w-12 h-12 bg-gold/10 rounded-full flex items-center justify-center border border-gold/30">
+              <span className="text-xl">🔔</span>
+              <div className="absolute inset-0 rounded-full border-2 border-gold animate-ping opacity-50"></div>
+            </div>
+            <div>
+              <p className="text-gold font-black uppercase tracking-widest text-[10px] mb-1 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                Live Booking Alert
+              </p>
+              <p className="font-bold text-white text-lg">{newBookingAlert.customer_name}</p>
+              <p className="text-gray-400 text-sm mt-1">{newBookingAlert.service_name} • {newBookingAlert.time_slot}</p>
+            </div>
+            <button 
+              onClick={() => setNewBookingAlert(null)} 
+              className="ml-6 text-gray-500 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

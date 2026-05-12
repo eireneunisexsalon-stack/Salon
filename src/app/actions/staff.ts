@@ -28,14 +28,14 @@ export async function addStaff(staffMember: { name: string, role: string, phone:
       .insert([staffMember]);
 
     if (error) {
-      console.error("Error adding staff:", error);
-      return { success: false, error: "Failed to add staff member" };
+      console.error("Error adding staff:", error.message, error.details);
+      return { success: false, error: error.message };
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Exception adding staff:", error);
-    return { success: false, error: "An exception occurred" };
+    return { success: false, error: error.message || "An exception occurred" };
   }
 }
 
@@ -54,6 +54,25 @@ export async function deleteStaff(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Exception deleting staff:", error);
+    return { success: false, error: "An exception occurred" };
+  }
+}
+
+export async function updateStaffAttendance(id: string, status: string) {
+  try {
+    const { error } = await supabase
+      .from("staff")
+      .update({ attendance_status: status })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating staff attendance:", error);
+      return { success: false, error: "Failed to update attendance" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Exception updating staff attendance:", error);
     return { success: false, error: "An exception occurred" };
   }
 }
