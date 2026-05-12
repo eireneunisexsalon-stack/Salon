@@ -4,14 +4,19 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { getActiveOffer } from '@/app/actions/offers';
 
 export default function ServicesPage() {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeGender, setActiveGender] = useState<'Women' | 'Men'>('Women');
+  const [activeOffer, setActiveOffer] = useState<any>(null);
 
   useEffect(() => {
-    async function fetchServices() {
+    async function fetchData() {
+      const offer = await getActiveOffer();
+      setActiveOffer(offer);
+
       const { data, error } = await supabase
         .from('services')
         .select('*')
@@ -22,7 +27,7 @@ export default function ServicesPage() {
       }
       setLoading(false);
     }
-    fetchServices();
+    fetchData();
   }, []);
 
   // Organize services by gender and category
@@ -162,11 +167,21 @@ export default function ServicesPage() {
                             </div>
                           </div>
                           
-                          <div className="text-right flex items-center gap-5 relative z-10">
-                            <span className="text-lg font-black text-gold italic whitespace-nowrap">₹{service.price}</span>
+                          
+                          <div className="text-right flex flex-col justify-center items-end relative z-10">
+                            {activeOffer ? (
+                              <>
+                                <span className="text-[10px] text-gray-500 line-through">₹{service.price}</span>
+                                <span className="text-lg font-black text-green-400 italic whitespace-nowrap">
+                                  ₹{Math.round(service.price * (1 - activeOffer.discount_percentage / 100))}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-lg font-black text-gold italic whitespace-nowrap">₹{service.price}</span>
+                            )}
                             <Link 
                               href={`/book?service=${encodeURIComponent(service.name)}`}
-                              className="px-5 py-2 bg-white/5 text-white hover:bg-gold hover:text-black text-[9px] font-black uppercase tracking-widest rounded-xl border border-white/10 hover:border-gold transition-all"
+                              className="mt-2 px-5 py-2 bg-white/5 text-white hover:bg-gold hover:text-black text-[9px] font-black uppercase tracking-widest rounded-xl border border-white/10 hover:border-gold transition-all"
                             >
                               Book
                             </Link>

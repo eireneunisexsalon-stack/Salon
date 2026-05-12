@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { getActiveOffer } from '@/app/actions/offers';
 import Header from './components/Header';
 
 export default async function Home() {
+  const activeOffer = await getActiveOffer();
 
   // Fetch Gallery Images
   const { data: galleryImages } = await supabase
@@ -21,6 +23,25 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen selection:bg-gold selection:text-black">
+      {/* Promotional Banner */}
+      {activeOffer && (
+        <div className="bg-gold text-black px-4 py-3 text-center relative z-50 overflow-hidden shadow-[0_0_20px_rgba(212,175,55,0.3)]">
+          <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4">
+            <span className="font-black italic uppercase tracking-widest text-sm md:text-base animate-pulse">
+              🎉 {activeOffer.title} 🎉
+            </span>
+            <span className="hidden md:inline font-bold opacity-50">|</span>
+            <span className="text-xs md:text-sm font-bold uppercase tracking-wider">
+              {activeOffer.description}
+            </span>
+            <span className="hidden md:inline font-bold opacity-50">|</span>
+            <Link href="/book" className="ml-2 px-4 py-1 bg-black text-gold rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
+              Book Now &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
       <Header />
 
       {/* Hero Section */}

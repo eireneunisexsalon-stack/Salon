@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Script from 'next/script';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createBooking, getBookedSlots, getServicesForBooking } from '../actions/book';
+import { getActiveOffer } from '../actions/offers';
 import { getUser } from '../actions/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -31,6 +32,8 @@ function BookingForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const [activeOffer, setActiveOffer] = useState<any>(null);
+
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [isCheckingSlots, setIsCheckingSlots] = useState(false);
 
@@ -42,8 +45,12 @@ function BookingForm() {
 
   useEffect(() => {
     async function loadServices() {
-      const data = await getServicesForBooking();
+      const [data, offer] = await Promise.all([
+        getServicesForBooking(),
+        getActiveOffer()
+      ]);
       setServices(data);
+      setActiveOffer(offer);
       
       // Handle preselected service from query param
       if (preselectedServiceName && data.length > 0) {
@@ -116,7 +123,8 @@ function BookingForm() {
       
     receiptUrl = publicUrlData.publicUrl;
 
-    const depositAmount = Math.round(selectedService.price * 0.1);
+    const finalPrice = activeOffer ? Math.round(selectedService.price * (1 - activeOffer.discount_percentage / 100)) : selectedService.price;
+    const depositAmount = Math.round(finalPrice * 0.1);
 
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -128,7 +136,7 @@ function BookingForm() {
       booking_date: selectedDate,
       time_slot: selectedTime,
       deposit_amount: depositAmount,
-      total_amount: selectedService.price,
+      total_amount: finalPrice,
       status: 'pending_verification',
       user_id: session?.user?.id,
       receipt_url: receiptUrl
@@ -254,7 +262,14 @@ function BookingForm() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <h3 className={`font-bold tracking-wide transition-colors ${selectedService?.id === s.id ? 'text-gold' : 'text-white'}`}>{s.name}</h3>
-                          <span className="text-gold font-bold">₹{s.price}</span>
+                          {activeOffer ? (
+                            <div className="text-right">
+                              <span className="text-[10px] text-gray-500 line-through block">₹{s.price}</span>
+                              <span className="text-green-400 font-bold">₹{Math.round(s.price * (1 - activeOffer.discount_percentage / 100))}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gold font-bold">₹{s.price}</span>
+                          )}
                         </div>
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{s.duration_mins || '60'} MIN</p>
                       </button>
@@ -339,27 +354,42 @@ function BookingForm() {
             {step === 3 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center">
-                  <h3 className="text-xl font-black text-white uppercase italic mb-2">Scan & Pay <span className="text-gold">₹{Math.round(selectedService.price * 0.1)}</span></h3>
-                  <p className="text-[10px] text-gray-500 tracking-[0.2em] uppercase mb-8">Pay 10% advance to confirm your appointment</p>
-                  
-                  <div className="w-72 max-w-full mx-auto mb-8 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(212,175,55,0.2)] flex justify-center items-center">
-                    <img src="/qr-code.jpeg" alt="Payment QR Code" className="w-full h-auto object-contain rounded-lg" />
-                  </div>
+                  {(() => {
+                    const finalPrice = activeOffer ? Math.round(selectedService.price * (1 - activeOffer.discount_percentage / 100)) : selectedService.price;
+                    const advancePrice = Math.round(finalPrice * 0.1);
+                    return (
+                      <>
+                        <h3 className="text-xl font-black text-white uppercase italic mb-2">Scan & Pay <span className="text-gold">₹{advancePrice}</span></h3>
+                        <p className="text-[10px] text-gray-500 tracking-[0.2em] uppercase mb-8">Pay 10% advance to confirm your appointment</p>
+                        
+                        <div className="w-72 max-w-full mx-auto mb-8 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(212,175,55,0.2)] flex justify-center items-center">
+                          <img src="/qr-code.jpeg" alt="Payment QR Code" className="w-full h-auto object-contain rounded-lg" />
+                        </div>
 
-                  <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 space-y-4">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">Total Service Price</span>
-                      <span className="text-white font-bold">₹{selectedService.price}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gold font-bold italic">Advance to Pay Now</span>
-                      <span className="text-gold font-black text-lg italic">₹{Math.round(selectedService.price * 0.1)}</span>
-                    </div>
-                    <div className="h-px bg-white/5"></div>
-                    <p className="text-[9px] text-gray-600 uppercase tracking-widest text-center">
-                      Remaining ₹{selectedService.price - Math.round(selectedService.price * 0.1)} will be paid at salon
-                    </p>
-                  </div>
+                        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 space-y-4">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">Total Service Price</span>
+                            {activeOffer ? (
+                              <div className="text-right">
+                                <span className="text-gray-500 line-through text-[10px] mr-2">₹{selectedService.price}</span>
+                                <span className="text-white font-bold">₹{finalPrice}</span>
+                              </div>
+                            ) : (
+                              <span className="text-white font-bold">₹{finalPrice}</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gold font-bold italic">Advance to Pay Now</span>
+                            <span className="text-gold font-black text-lg italic">₹{advancePrice}</span>
+                          </div>
+                          <div className="h-px bg-white/5"></div>
+                          <p className="text-[9px] text-gray-600 uppercase tracking-widest text-center">
+                            Remaining ₹{finalPrice - advancePrice} will be paid at salon
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-4">
