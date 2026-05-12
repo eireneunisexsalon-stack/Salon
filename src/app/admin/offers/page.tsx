@@ -12,6 +12,8 @@ export default function OffersAdminPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState(10);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     loadOffers();
@@ -26,19 +28,23 @@ export default function OffersAdminPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!title || !description || discountPercentage <= 0) return;
+    if (!title || !description || discountPercentage <= 0 || !startDate || !endDate) return;
 
     setIsSubmitting(true);
     const result = await createOffer({
       title,
       description,
-      discount_percentage: discountPercentage
+      discount_percentage: discountPercentage,
+      start_date: new Date(startDate).toISOString(),
+      end_date: new Date(endDate).toISOString()
     });
 
     if (result.success) {
       setTitle('');
       setDescription('');
       setDiscountPercentage(10);
+      setStartDate('');
+      setEndDate('');
       await loadOffers();
     } else {
       alert("Failed to create offer: " + result.error);
@@ -107,6 +113,30 @@ export default function OffersAdminPage() {
               </div>
             </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Valid From</label>
+              <input 
+                type="datetime-local" 
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white outline-none focus:border-gold transition-colors"
+                style={{ colorScheme: 'dark' }}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Valid Until</label>
+              <input 
+                type="datetime-local" 
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white outline-none focus:border-gold transition-colors"
+                style={{ colorScheme: 'dark' }}
+                required
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Offer Description</label>
             <textarea 
@@ -149,7 +179,10 @@ export default function OffersAdminPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 text-sm">{offer.description}</p>
+                  <p className="text-gray-400 text-sm mb-2">{offer.description}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                    Valid: {new Date(offer.start_date).toLocaleDateString()} - {new Date(offer.end_date).toLocaleDateString()}
+                  </p>
                 </div>
                 
                 <div className="flex items-center gap-4 w-full md:w-auto">

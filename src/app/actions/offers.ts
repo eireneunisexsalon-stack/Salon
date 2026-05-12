@@ -22,10 +22,13 @@ export async function getOffers() {
 
 export async function getActiveOffer() {
   try {
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("offers")
       .select("*")
       .eq("is_active", true)
+      .lte("start_date", now)
+      .gte("end_date", now)
       .limit(1)
       .single();
 
@@ -40,7 +43,7 @@ export async function getActiveOffer() {
   }
 }
 
-export async function createOffer(offerData: { title: string; description: string; discount_percentage: number }) {
+export async function createOffer(offerData: { title: string; description: string; discount_percentage: number; start_date: string; end_date: string; }) {
   try {
     const { error } = await supabase
       .from("offers")
