@@ -260,7 +260,7 @@ export async function seedServices() {
     }
 
     return { success: true, count: allServices.length };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Exception seeding services:", error);
     return { success: false, error: error.message || "An exception occurred" };
   }
