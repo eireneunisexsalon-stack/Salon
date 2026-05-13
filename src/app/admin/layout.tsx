@@ -94,8 +94,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/gallery" className="block px-4 py-3 rounded-md hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
             Gallery Management
           </Link>
-          <Link href="/admin/offers" className="block px-4 py-3 rounded-md hover:bg-white/5 text-gold hover:bg-gold/10 transition-colors font-bold">
+          <Link href="/admin/offers" className="block px-4 py-3 rounded-md hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
             Offers & Promotions
+          </Link>
+          <Link href="/admin/reviews" className="block px-4 py-3 rounded-md hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
+            Customer Reviews
           </Link>
         </nav>
         <div className="p-4 border-t border-white/10 mt-auto">

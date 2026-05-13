@@ -37,7 +37,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full py-5 px-6 md:px-8 flex justify-between items-center z-50 transition-all duration-300 bg-black/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 left-0 w-full py-5 px-6 md:px-8 flex justify-between items-center z-50 transition-all duration-300 bg-black/80 backdrop-blur-xl border-b border-white/5">
         <Link href="/" className="text-xl md:text-2xl font-black tracking-[0.1em] text-white italic z-50">
           EIRENE<span className="text-gold">SALON</span>
         </Link>

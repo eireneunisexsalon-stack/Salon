@@ -1,6 +1,8 @@
 "use server";
 
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { revalidatePath } from "next/cache";
 
 export async function getOffers() {
   try {
@@ -23,7 +25,8 @@ export async function getOffers() {
 export async function getActiveOffer() {
   try {
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    // Using supabaseAdmin to ensure the homepage can always fetch the active offer bypassing RLS
+    const { data, error } = await supabaseAdmin
       .from("offers")
       .select("*")
       .eq("is_active", true)
@@ -45,11 +48,14 @@ export async function getActiveOffer() {
 
 export async function createOffer(offerData: { title: string; description: string; discount_percentage: number; start_date: string; end_date: string; }) {
   try {
-    const { error } = await supabase
+    // Using supabaseAdmin to bypass RLS for administrative insert
+    const { error } = await supabaseAdmin
       .from("offers")
       .insert([offerData]);
 
     if (error) throw error;
+    
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Error creating offer:", error);
@@ -59,18 +65,19 @@ export async function createOffer(offerData: { title: string; description: strin
 
 export async function updateOfferStatus(id: string, is_active: boolean) {
   try {
-    // If activating an offer, we should ideally deactivate others to ensure only one banner exists, 
-    // but for simplicity we'll just update this one. The getActiveOffer limits to 1 anyway.
+    // If activating an offer, we should deactivate others to ensure only one banner exists
     if (is_active) {
-      await supabase.from("offers").update({ is_active: false }).neq("id", "00000000-0000-0000-0000-000000000000"); // deactivate all others
+      await supabaseAdmin.from("offers").update({ is_active: false }).neq("id", id); // deactivate others
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("offers")
       .update({ is_active })
       .eq("id", id);
 
     if (error) throw error;
+    
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Error updating offer status:", error);
@@ -80,7 +87,7 @@ export async function updateOfferStatus(id: string, is_active: boolean) {
 
 export async function deleteOffer(id: string) {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("offers")
       .delete()
       .eq("id", id);

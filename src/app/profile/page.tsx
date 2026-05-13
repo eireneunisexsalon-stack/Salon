@@ -5,7 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { deleteBooking, autoCleanupOldBookings } from '@/app/actions/bookings';
 import SignOutButton from './SignOutButton';
+import { submitReview } from '@/app/actions/reviews';
 import AmbientParticles from '../components/AmbientParticles';
 
 export default function ProfilePage() {
@@ -23,10 +25,14 @@ export default function ProfilePage() {
       }
       setUser(session.user);
 
+      // Run auto-cleanup for old completed bookings
+      await autoCleanupOldBookings();
+
       const { data } = await supabase
         .from("bookings")
         .select("*")
         .eq("user_id", session.user.id)
+        .eq("is_deleted_by_user", false)
         .order("booking_date", { ascending: false });
         
       setBookings(data || []);
@@ -35,6 +41,17 @@ export default function ProfilePage() {
     
     fetchProfile();
   }, [router]);
+
+  async function handleDeleteBooking(bookingId: string) {
+    if (!confirm("Are you sure you want to remove this booking from your history?")) return;
+    
+    const result = await deleteBooking(bookingId, user.id);
+    if (result.success) {
+      setBookings(bookings.filter(b => b.id !== bookingId));
+    } else {
+      alert("Failed to delete: " + result.error);
+    }
+  }
 
   if (loading) {
     return (
@@ -108,7 +125,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             bookings.map((booking) => (
-              <div key={booking.id} className="bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-3xl hover:border-gold/30 transition-all group shadow-lg">
+              <div key={booking.id} className="relative bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-3xl hover:border-gold/30 transition-all group shadow-lg">
                 <div className="flex flex-col md:flex-row justify-between gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -120,6 +137,16 @@ export default function ProfilePage() {
                         {booking.status.replace('_', ' ')}
                       </span>
                       <span className="text-[10px] text-gray-600 uppercase tracking-widest">ID: {booking.id.slice(0, 8)}</span>
+                      
+                      <button 
+                        onClick={() => handleDeleteBooking(booking.id)}
+                        className="ml-auto p-2 text-white/20 hover:text-red-500 transition-all"
+                        title="Remove from history"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                     
                     <div>
@@ -159,11 +186,107 @@ export default function ProfilePage() {
             ))
           )}
         </div>
+
+        {/* Review System */}
+        <div className="mt-20 pt-12 border-t border-white/5">
+          <ReviewSection user={user} fullName={fullName} />
+        </div>
       </main>
 
       <footer className="py-12 text-center text-gray-600 text-[10px] tracking-widest uppercase border-t border-white/5 mt-20">
         &copy; {new Date().getFullYear()} Eirene Salon. All Rights Reserved.
       </footer>
+      </div>
+    </div>
+  );
+}
+
+function ReviewSection({ user, fullName }: { user: any, fullName: string }) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (rating === 0) {
+      alert("Please select a star rating!");
+      return;
+    }
+    if (!comment) return;
+
+    setIsSubmitting(true);
+    const result = await submitReview({
+      user_id: user.id,
+      customer_name: fullName,
+      rating,
+      comment
+    });
+
+    if (result.success) {
+      setSubmitted(true);
+      setComment('');
+    } else {
+      alert("Failed to submit review: " + result.error);
+    }
+    setIsSubmitting(false);
+  }
+
+  if (submitted) {
+    return (
+      <div className="bg-gold/5 border border-gold/20 p-10 rounded-3xl text-center">
+        <span className="text-4xl mb-4 block">✨</span>
+        <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">Thank You for Your Feedback!</h3>
+        <p className="text-gray-400 text-sm">Your review has been submitted and sent to our admin panel.</p>
+        <button onClick={() => setSubmitted(false)} className="mt-6 text-gold text-xs uppercase tracking-widest font-bold border-b border-gold pb-1">Write another review</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#0a0a0a] border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+      
+      <div className="relative z-10">
+        <h2 className="text-2xl font-black uppercase italic tracking-tight mb-2">Share Your <span className="text-gold">Experience</span></h2>
+        <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] mb-8">Your feedback helps us maintain our premium standards</p>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="space-y-4">
+            <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-bold">Your Rating</label>
+            <div className="flex gap-3">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className={`text-3xl transition-all ${star <= rating ? 'text-gold scale-110 drop-shadow-[0_0_10px_rgba(212,175,55,0.5)]' : 'text-gray-800 hover:text-gray-600'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-[10px] uppercase tracking-widest text-gray-500 font-bold">Your Review</label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Tell us about your visit..."
+              className="w-full bg-black border border-white/10 rounded-2xl p-6 text-white outline-none focus:border-gold transition-all h-32 resize-none placeholder:text-gray-800"
+              required
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full md:w-auto px-10 py-4 bg-gold text-black font-black rounded-xl uppercase tracking-widest text-[10px] hover:bg-white transition-all shadow-[0_0_30px_rgba(212,175,55,0.2)] disabled:opacity-50"
+          >
+            {isSubmitting ? 'Sending...' : 'Submit Review'}
+          </button>
+        </form>
       </div>
     </div>
   );

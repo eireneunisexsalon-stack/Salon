@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import Header from '../components/Header';
 import AmbientParticles from '../components/AmbientParticles';
 
@@ -7,8 +7,8 @@ import AmbientParticles from '../components/AmbientParticles';
 export const revalidate = 0;
 
 export default async function GalleryPage() {
-  // Fetch Gallery Images
-  const { data: galleryImages } = await supabase
+  // Fetch Gallery Images using admin client for reliability
+  const { data: galleryImages } = await supabaseAdmin
     .from('gallery')
     .select('*')
     .order('created_at', { ascending: false });
@@ -37,8 +37,8 @@ export default async function GalleryPage() {
                 style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
               >
                 <img 
-                  src={img.image_url} 
-                  alt={img.title || "Gallery Image"} 
+                  src={img.url} 
+                  alt={img.alt || "Gallery Image"} 
                   className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">

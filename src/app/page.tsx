@@ -1,14 +1,27 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getActiveOffer } from '@/app/actions/offers';
+import { getPublishedReviews } from '@/app/actions/reviews';
 import Header from './components/Header';
+
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const activeOffer = await getActiveOffer();
+  const publishedReviews = await getPublishedReviews();
 
-  // Fetch Gallery Images
-  const { data: galleryImages } = await supabase
+  const displayReviews = publishedReviews.length > 0 
+    ? publishedReviews 
+    : [
+        { customer_name: "Sarah L.", comment: "Absolutely phenomenal experience. Elena understood exactly what I wanted with my balayage. The luxury spa treatment felt like heaven.", rating: 5 },
+        { customer_name: "David K.", comment: "Best fade and beard trim I've ever had. Marcus is a true artist. The hot towel shave is a must-try for any guy.", rating: 5 },
+        { customer_name: "Priya M.", comment: "The ambiance is incredibly premium. It really feels like a VIP experience from the moment you walk in. Will definitely be returning.", rating: 5 }
+      ];
+
+  // Fetch Gallery Images using admin client for reliability
+  const { data: galleryImages } = await supabaseAdmin
     .from('gallery')
     .select('*')
     .order('created_at', { ascending: false })
@@ -242,19 +255,15 @@ export default async function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { name: "Sarah L.", review: "Absolutely phenomenal experience. Elena understood exactly what I wanted with my balayage. The luxury spa treatment felt like heaven.", stars: 5 },
-              { name: "David K.", review: "Best fade and beard trim I've ever had. Marcus is a true artist. The hot towel shave is a must-try for any guy.", stars: 5 },
-              { name: "Priya M.", review: "The ambiance is incredibly premium. It really feels like a VIP experience from the moment you walk in. Will definitely be returning.", stars: 5 }
-            ].map((r, i) => (
+            {displayReviews.map((r: any, i: number) => (
               <div key={i} className="p-8 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                 <div className="flex gap-1 mb-4">
-                  {[...Array(r.stars)].map((_, idx) => (
-                    <span key={idx} className="text-gold text-xl">★</span>
+                  {[...Array(5)].map((_, idx) => (
+                    <span key={idx} className={`text-xl ${idx < r.rating ? 'text-gold' : 'text-gray-800'}`}>★</span>
                   ))}
                 </div>
-                <p className="text-gray-300 italic mb-6 leading-relaxed">"{r.review}"</p>
-                <p className="font-bold tracking-wide uppercase text-sm">{r.name}</p>
+                <p className="text-gray-300 italic mb-6 leading-relaxed">"{r.comment}"</p>
+                <p className="font-bold tracking-wide uppercase text-sm">{r.customer_name}</p>
               </div>
             ))}
           </div>
@@ -268,7 +277,7 @@ export default async function Home() {
             {/* Map Placeholder */}
             <div className="h-[400px] md:h-[500px] w-full rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl bg-white/5">
               <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d112005.16104445831!2d77.10091819662776!3d28.644186596181467!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd5b347eb62d%3A0x37205b715389640!2sNew%20Delhi%2C%20Delhi!5e0!3m2!1sen!2sin!4v1714000000000!5m2!1sen!2sin" 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3523.0013008821056!2d73.3316263!3d27.993856599999997!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x393fe70d3f2019f1%3A0x518dcc936495b120!2sEirene%20unisex%20salon!5e0!3m2!1sen!2sin!4v1778702787305!5m2!1sen!2sin" 
                 className="w-full h-full border-0"
                 allowFullScreen
                 loading="lazy" 
@@ -285,7 +294,7 @@ export default async function Home() {
                 <div className="flex flex-wrap gap-10 text-gray-300">
                   <div>
                     <h4 className="text-gold font-bold uppercase tracking-widest text-sm mb-2">Location</h4>
-                    <p className="text-lg">Premium Salon Hub<br/>Your City, India</p>
+                    <p className="text-lg">Eirene Unisex Salon<br/>Bikaner, Rajasthan</p>
                   </div>
                   <div>
                     <h4 className="text-gold font-bold uppercase tracking-widest text-sm mb-2">Hours</h4>

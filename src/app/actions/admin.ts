@@ -1,6 +1,7 @@
 "use server";
 
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { seedServices as comprehensiveSeed } from './seed';
 
 export async function getBookings() {
@@ -31,18 +32,18 @@ export async function updateBookingStatus(id: string, status: string) {
   try {
     // If marking as completed, add the final 90% payment to the wallet
     if (status === 'completed') {
-      const { data: booking } = await supabase.from("bookings").select("*").eq("id", id).single();
+      const { data: booking } = await supabaseAdmin.from("bookings").select("*").eq("id", id).single();
       if (booking) {
         const remainingAmount = (booking.total_amount || 0) - (booking.deposit_amount || 0);
         if (remainingAmount > 0) {
           // Check if we already added it to prevent duplicates
-          const { data: existingTx } = await supabase.from("wallet_transactions")
+          const { data: existingTx } = await supabaseAdmin.from("wallet_transactions")
             .select("id")
             .eq("booking_id", id)
             .eq("description", `Final payment for booking ${id}`);
             
           if (!existingTx || existingTx.length === 0) {
-            await supabase.from("wallet_transactions").insert([{
+            await supabaseAdmin.from("wallet_transactions").insert([{
               booking_id: id,
               amount: remainingAmount,
               type: "credit",
@@ -54,7 +55,7 @@ export async function updateBookingStatus(id: string, status: string) {
       }
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("bookings")
       .update({ status })
       .eq("id", id);
@@ -98,7 +99,7 @@ export async function getServices() {
 
 export async function addService(service: { name: string, price: number, category: string, duration_mins: number }) {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("services")
       .insert([service]);
 
@@ -116,7 +117,7 @@ export async function addService(service: { name: string, price: number, categor
 
 export async function deleteService(id: string) {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("services")
       .delete()
       .eq("id", id);
@@ -166,7 +167,7 @@ export async function getWalletData() {
 export async function verifyPaymentManually(bookingId: string) {
   try {
     // 1. Get booking details
-    const { data: booking, error: fetchError } = await supabase
+    const { data: booking, error: fetchError } = await supabaseAdmin
       .from("bookings")
       .select("*")
       .eq("id", bookingId)
@@ -175,7 +176,7 @@ export async function verifyPaymentManually(bookingId: string) {
     if (fetchError || !booking) throw new Error("Booking not found");
 
     // 2. Update booking status
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("bookings")
       .update({
         status: "confirmed",
@@ -186,7 +187,7 @@ export async function verifyPaymentManually(bookingId: string) {
     if (updateError) throw updateError;
 
     // 3. Update existing Wallet Transaction from pending to success
-    const { error: txError } = await supabase
+    const { error: txError } = await supabaseAdmin
       .from("wallet_transactions")
       .update({ status: "success" })
       .eq("booking_id", bookingId)
