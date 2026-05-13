@@ -136,7 +136,7 @@ export async function deleteService(id: string) {
 
 export async function getWalletData() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("wallet_transactions")
       .select(`
         *,

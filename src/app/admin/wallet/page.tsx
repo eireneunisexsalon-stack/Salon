@@ -1,5 +1,7 @@
 import { getWalletData } from '../../actions/admin';
 
+export const dynamic = 'force-dynamic';
+
 export default async function WalletDashboard() {
   const { transactions, balance } = await getWalletData();
 
