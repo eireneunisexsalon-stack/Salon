@@ -21,7 +21,7 @@ export async function getProducts() {
   }
 }
 
-export async function addProduct(product: { name: string, brand: string, price: number, stock: number }) {
+export async function addProduct(product: { name: string, brand?: string, price: number, stock: number, created_at?: string }) {
   try {
     const { error } = await supabase
       .from("products")

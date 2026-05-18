@@ -126,6 +126,7 @@ export default function BookingsManagement() {
                 setShowServiceDropdown(true);
               }}
               onFocus={() => setShowServiceDropdown(true)}
+              onClick={() => setShowServiceDropdown(true)}
               onBlur={() => setTimeout(() => setShowServiceDropdown(false), 200)}
               placeholder="Search services..."
               className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
@@ -133,27 +134,37 @@ export default function BookingsManagement() {
             />
             {showServiceDropdown && (
               <div className="absolute top-full left-0 w-full mt-1 max-h-48 overflow-y-auto bg-[#0a0a0a] border border-white/20 rounded-md z-50 shadow-2xl scrollbar-thin">
-                {services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())).map(s => (
-                  <div 
-                    key={s.id} 
-                    className="p-3 hover:bg-white/10 cursor-pointer text-sm text-gray-300 hover:text-white transition-colors border-b border-white/5 last:border-0"
-                    onClick={() => {
-                      const isSelected = selectedServices.some(item => item.id === s.id);
-                      let newServices;
-                      if (isSelected) {
-                        newServices = selectedServices.filter(item => item.id !== s.id);
-                      } else {
-                        newServices = [...selectedServices, s];
-                      }
-                      setSelectedServices(newServices);
-                      setAmount(newServices.reduce((sum, item) => sum + item.price, 0).toString());
-                      setServiceSearch('');
-                      setShowServiceDropdown(false);
-                    }}
-                  >
-                    {s.name} <span className="text-gold text-xs float-right font-bold mt-0.5">₹{s.price}</span>
-                  </div>
-                ))}
+                {services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())).map(s => {
+                  const isSelected = selectedServices.some(item => item.id === s.id);
+                  return (
+                    <div 
+                      key={s.id} 
+                      className={`p-3 cursor-pointer text-sm transition-colors border-b border-white/5 last:border-0 flex justify-between items-center ${
+                        isSelected 
+                          ? 'bg-gold/10 text-gold hover:bg-gold/20' 
+                          : 'text-gray-300 hover:text-white hover:bg-white/10'
+                      }`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        let newServices;
+                        if (isSelected) {
+                          newServices = selectedServices.filter(item => item.id !== s.id);
+                        } else {
+                          newServices = [...selectedServices, s];
+                        }
+                        setSelectedServices(newServices);
+                        setAmount(newServices.reduce((sum, item) => sum + item.price, 0).toString());
+                        setServiceSearch('');
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isSelected && <span className="text-gold font-bold">✓</span>}
+                        <span>{s.name}</span>
+                      </div>
+                      <span className="text-gold text-xs font-bold">₹{s.price}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
