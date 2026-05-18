@@ -93,6 +93,13 @@ export default async function WalletDashboard() {
                         }`}>
                           {tx.type}
                         </span>
+                        {tx.bookings?.payment_method && (
+                          <span className={`ml-2 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest border ${
+                            tx.bookings.payment_method === 'Cash' ? 'bg-green-500/5 text-green-300 border-green-500/10' : 'bg-blue-500/5 text-blue-300 border-blue-500/10'
+                          }`}>
+                            {tx.bookings.payment_method}
+                          </span>
+                        )}
                       </td>
                       <td className="p-6 text-right">
                         <p className={`text-lg font-black italic ${tx.type === 'credit' ? 'text-white' : 'text-red-400'}`}>

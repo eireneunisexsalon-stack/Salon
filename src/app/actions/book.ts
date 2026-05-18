@@ -13,12 +13,18 @@ export async function createBooking(data: {
   status?: string;
   user_id?: string;
   receipt_url?: string;
+  payment_method?: string;
+  is_walkin?: boolean;
+  notes?: string;
 }) {
   try {
     // Get all services to map categories
     const { data: services } = await supabase.from("services").select("name, category");
     const serviceMap = new Map(services?.map(s => [s.name, s.category]) || []);
-    const requestedCategory = serviceMap.get(data.service_name);
+    
+    // Split requested services and get their categories
+    const requestedServices = data.service_name.split(", ").map(s => s.trim());
+    const requestedCategories = new Set(requestedServices.map(s => serviceMap.get(s)).filter(Boolean));
 
     // Check if slot is already booked for that date/time
     const { data: existingBookings, error: checkError } = await supabase
@@ -38,11 +44,14 @@ export async function createBooking(data: {
       return { success: false, error: "Failed to check slot availability" };
     }
     
-    // Find if there's an existing booking in the exact SAME category
-    const conflict = existingBookings?.find(b => serviceMap.get(b.service_name) === requestedCategory);
+    // Find if there's an existing booking that conflicts with ANY of the requested categories
+    const conflict = existingBookings?.find(b => {
+      const existingServices = b.service_name.split(", ").map((s: string) => s.trim());
+      return existingServices.some((s: string) => requestedCategories.has(serviceMap.get(s)));
+    });
 
     if (conflict) {
-      return { success: false, error: "This time slot is already booked for this service category. Please choose another." };
+      return { success: false, error: "One or more selected services conflict with an existing booking in the same category." };
     }
     
     // Insert the new booking
@@ -59,7 +68,10 @@ export async function createBooking(data: {
           total_amount: data.total_amount || 0,
           status: data.status || "pending",
           user_id: data.user_id || null,
-          receipt_url: data.receipt_url || null
+          receipt_url: data.receipt_url || null,
+          payment_method: data.payment_method || "Online",
+          is_walkin: data.is_walkin || false,
+          notes: data.notes || null
         }
       ])
       .select("id")
@@ -82,8 +94,10 @@ export async function createBooking(data: {
           booking_id: newBooking.id,
           amount: data.deposit_amount,
           type: "credit",
-          status: "pending",
-          description: `Advance 10% payment for booking ${newBooking.id}`
+          status: (data.is_walkin || data.status === 'confirmed') ? "success" : "pending",
+          description: data.is_walkin 
+            ? `Walk-in payment via ${data.payment_method || 'Cash'}`
+            : `Advance 10% payment for booking ${newBooking.id}`
         }
       ]);
     }
@@ -113,7 +127,10 @@ export async function getBookedSlots(date: string, category: string) {
 
     const serviceCategoryMap = new Map(services.map(s => [s.name, s.category]));
 
-    const categoryBookings = bookings.filter(b => serviceCategoryMap.get(b.service_name) === category);
+    const categoryBookings = bookings.filter(b => {
+      const existingServices = b.service_name.split(", ").map((s: string) => s.trim());
+      return existingServices.some((s: string) => serviceCategoryMap.get(s) === category);
+    });
 
     return categoryBookings.map(b => b.time_slot);
   } catch (error) {

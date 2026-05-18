@@ -143,7 +143,9 @@ export async function getWalletData() {
         bookings (
           customer_name,
           service_name,
-          booking_date
+          booking_date,
+          payment_method,
+          is_walkin
         )
       `)
       .order("created_at", { ascending: false });

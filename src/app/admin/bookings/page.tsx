@@ -12,9 +12,12 @@ export default function BookingsManagement() {
   const [services, setServices] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [serviceId, setServiceId] = useState('');
-  const [date, setDate] = useState('');
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [serviceSearch, setServiceSearch] = useState('');
@@ -46,31 +49,35 @@ export default function BookingsManagement() {
 
   const handleAddWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !serviceId || !date || !time) return;
+    if (!name || !phone || selectedServices.length === 0 || !date || !time) return;
 
     setIsSubmitting(true);
-    
-    const service = services.find(s => s.id === serviceId);
     
     const result = await createBooking({
       customer_name: name,
       phone_number: phone,
-      service_name: service?.name || 'Walk-in Service',
+      service_name: selectedServices.map(s => s.name).join(", "),
       booking_date: date,
       time_slot: time,
-      deposit_amount: service?.price || 0, // Full amount for offline
-      total_amount: service?.price || 0,
+      deposit_amount: parseInt(amount) || 0,
+      total_amount: parseInt(amount) || 0,
       status: 'confirmed',
+      payment_method: paymentMethod,
+      is_walkin: true,
+      notes: notes
     });
 
     if (result.success) {
       alert("Walk-in booking added successfully!");
       setName('');
       setPhone('');
-      setServiceId('');
+      setSelectedServices([]);
       setServiceSearch('');
-      setDate('');
+      setDate(new Date().toISOString().split('T')[0]);
       setTime('');
+      setAmount('');
+      setNotes('');
+      setPaymentMethod('Cash');
       await fetchBookings();
     } else {
       alert("Failed to add walk-in: " + (result.error || ""));
@@ -92,7 +99,7 @@ export default function BookingsManagement() {
       {/* Add Walk-in Form */}
       <div className="bg-white/5 border border-white/10 p-6 rounded-xl mb-12">
         <h2 className="text-xl font-bold mb-4 border-b border-white/10 pb-2">Add Walk-in Client</h2>
-        <form onSubmit={handleAddWalkIn} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+        <form onSubmit={handleAddWalkIn} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-400">Customer Name</label>
             <input 
@@ -102,7 +109,7 @@ export default function BookingsManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-400">Phone</label>
+            <label className="block text-sm font-medium mb-1 text-gray-400">Phone Number</label>
             <input 
               type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. 9876543210" 
@@ -110,20 +117,19 @@ export default function BookingsManagement() {
             />
           </div>
           <div className="relative">
-            <label className="block text-sm font-medium mb-1 text-gray-400">Service</label>
+            <label className="block text-sm font-medium mb-1 text-gray-400">Select Service</label>
             <input 
               type="text" 
               value={serviceSearch}
               onChange={(e) => {
                 setServiceSearch(e.target.value);
-                setServiceId(''); // Reset ID if they type something new
                 setShowServiceDropdown(true);
               }}
               onFocus={() => setShowServiceDropdown(true)}
               onBlur={() => setTimeout(() => setShowServiceDropdown(false), 200)}
               placeholder="Search services..."
               className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
-              required={!serviceId}
+              required={selectedServices.length === 0}
             />
             {showServiceDropdown && (
               <div className="absolute top-full left-0 w-full mt-1 max-h-48 overflow-y-auto bg-[#0a0a0a] border border-white/20 rounded-md z-50 shadow-2xl scrollbar-thin">
@@ -132,19 +138,52 @@ export default function BookingsManagement() {
                     key={s.id} 
                     className="p-3 hover:bg-white/10 cursor-pointer text-sm text-gray-300 hover:text-white transition-colors border-b border-white/5 last:border-0"
                     onClick={() => {
-                      setServiceId(s.id);
-                      setServiceSearch(`${s.name} - ₹${s.price}`);
+                      const isSelected = selectedServices.some(item => item.id === s.id);
+                      let newServices;
+                      if (isSelected) {
+                        newServices = selectedServices.filter(item => item.id !== s.id);
+                      } else {
+                        newServices = [...selectedServices, s];
+                      }
+                      setSelectedServices(newServices);
+                      setAmount(newServices.reduce((sum, item) => sum + item.price, 0).toString());
+                      setServiceSearch('');
                       setShowServiceDropdown(false);
                     }}
                   >
                     {s.name} <span className="text-gold text-xs float-right font-bold mt-0.5">₹{s.price}</span>
                   </div>
                 ))}
-                {services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
-                  <div className="p-3 text-sm text-gray-500 italic text-center">No services found</div>
-                )}
               </div>
             )}
+          </div>
+          {selectedServices.length > 0 && (
+            <div className="lg:col-span-4 bg-white/5 p-4 rounded-lg border border-white/10 mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Selected Services</p>
+                <button type="button" onClick={() => { setSelectedServices([]); setAmount('0'); }} className="text-[9px] text-red-500 hover:text-red-400 uppercase tracking-widest font-bold">Clear All</button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedServices.map(s => (
+                  <span key={s.id} className="flex items-center gap-2 px-3 py-1 bg-gold/10 border border-gold/20 rounded-full text-[10px] font-bold text-gold">
+                    {s.name} (₹{s.price})
+                    <button type="button" onClick={() => {
+                      const newServices = selectedServices.filter(item => item.id !== s.id);
+                      setSelectedServices(newServices);
+                      setAmount(newServices.reduce((sum, item) => sum + item.price, 0).toString());
+                    }} className="hover:text-white">×</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-400">Total Amount (₹)</label>
+            <input 
+              type="number" required value={amount} onChange={(e) => setAmount(e.target.value)}
+              placeholder="Price" 
+              className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-400">Date</label>
@@ -156,7 +195,7 @@ export default function BookingsManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-400">Time</label>
+            <label className="block text-sm font-medium mb-1 text-gray-400">Time Slot</label>
             <select 
               required value={time} onChange={(e) => setTime(e.target.value)}
               className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
@@ -166,12 +205,30 @@ export default function BookingsManagement() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium mb-1 text-gray-400">Payment Mode</label>
+            <select 
+              value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Online">Online</option>
+            </select>
+          </div>
+          <div>
             <button 
               type="submit" disabled={isSubmitting}
-              className="w-full py-2 bg-gold text-black font-bold rounded-md uppercase tracking-wider text-xs disabled:opacity-50 h-[38px]"
+              className="w-full py-2 bg-gold text-black font-bold rounded-md uppercase tracking-wider text-xs disabled:opacity-50 h-[38px] shadow-[0_0_15px_rgba(212,175,55,0.2)] hover:bg-white transition-all"
             >
-              {isSubmitting ? "Adding..." : "Add Client"}
+              {isSubmitting ? "Adding..." : "Add Walk-in Client"}
             </button>
+          </div>
+          <div className="lg:col-span-4">
+            <label className="block text-sm font-medium mb-1 text-gray-400">Special Notes / Remarks</label>
+            <input 
+              type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Extra long hair, requested specific stylist, etc." 
+              className="w-full p-2 bg-black border border-white/20 rounded-md text-white outline-none focus:border-gold text-sm"
+            />
           </div>
         </form>
       </div>
@@ -185,8 +242,7 @@ export default function BookingsManagement() {
               <tr className="bg-white/5 border-b border-white/10">
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Date & Time</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Customer Details</th>
-                <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Service</th>
-                <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Status</th>
+                <th className="p-4 text-sm uppercase tracking-wider text-gray-400">Service & Payment</th>
                 <th className="p-4 text-sm uppercase tracking-wider text-gray-400 text-right">Actions</th>
               </tr>
             </thead>
@@ -201,7 +257,21 @@ export default function BookingsManagement() {
                     <div className="font-bold">{booking.customer_name}</div>
                     <div className="text-gray-400 text-sm">{booking.phone_number}</div>
                   </td>
-                  <td className="p-4">{booking.service_name}</td>
+                  <td className="p-4">
+                    <div className="font-bold">{booking.service_name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border ${
+                        booking.payment_method === 'Cash' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                      }`}>
+                        {booking.payment_method || 'Online'}
+                      </span>
+                      {booking.is_walkin && (
+                        <span className="px-2 py-0.5 bg-gold/10 text-gold border border-gold/20 rounded text-[10px] font-bold uppercase tracking-widest">
+                          Walk-in
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
                       ${booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 
@@ -211,6 +281,7 @@ export default function BookingsManagement() {
                     >
                       {booking.status}
                     </span>
+                    {booking.notes && <p className="text-[10px] text-gray-500 mt-2 italic max-w-[200px] truncate" title={booking.notes}>{booking.notes}</p>}
                   </td>
                   <td className="p-4 text-right">
                     <select 

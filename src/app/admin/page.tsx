@@ -108,9 +108,16 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-6">
                       <p className="text-white font-black italic">₹{booking.deposit_amount}</p>
-                      <span className={`text-[8px] uppercase font-black tracking-widest ${booking.payment_status === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
-                        {booking.payment_status === 'paid' ? '✓ Received' : '⌛ Awaiting'}
-                      </span>
+                      <div className="flex flex-col gap-1 mt-1">
+                        <span className={`text-[8px] uppercase font-black tracking-widest ${booking.payment_status === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
+                          {booking.payment_status === 'paid' ? '✓ Received' : '⌛ Awaiting'}
+                        </span>
+                        <span className={`text-[7px] px-1.5 py-0.5 rounded-sm uppercase font-black tracking-widest w-max ${
+                          booking.payment_method === 'Cash' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                        }`}>
+                          {booking.payment_method || 'Online'}
+                        </span>
+                      </div>
                       {booking.receipt_url && (
                         <a href={booking.receipt_url} target="_blank" rel="noopener noreferrer" className="block mt-2 text-[9px] text-blue-400 hover:text-blue-300 hover:underline uppercase tracking-widest font-bold flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
@@ -126,6 +133,9 @@ export default function AdminDashboard() {
                       }`}>
                         {booking.status.replace('_', ' ')}
                       </span>
+                      {booking.is_walkin && (
+                        <span className="block mt-1 text-[7px] text-gold font-black uppercase tracking-widest text-center">Walk-in</span>
+                      )}
                     </td>
                     <td className="p-6 text-right space-x-2 whitespace-nowrap">
                       {booking.status === 'pending_verification' && (

@@ -19,7 +19,7 @@ function BookingForm() {
   const [services, setServices] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState('Men');
   
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   
@@ -56,7 +56,7 @@ function BookingForm() {
       if (preselectedServiceName && data.length > 0) {
         const matched = data.find(s => s.name.toLowerCase() === preselectedServiceName.toLowerCase());
         if (matched) {
-          setSelectedService(matched);
+          setSelectedServices([matched]);
           setActiveCategory(matched.category);
         }
       }
@@ -94,7 +94,7 @@ function BookingForm() {
   const filteredServices = services.filter(s => s.category === activeCategory);
 
   const handleBookingSubmit = async () => {
-    if (!name || !phone || !selectedService || !selectedDate || !selectedTime || !receiptFile) {
+    if (!name || !phone || selectedServices.length === 0 || !selectedDate || !selectedTime || !receiptFile) {
       setError("Please fill in all details and upload your payment receipt.");
       return;
     }
@@ -123,7 +123,8 @@ function BookingForm() {
       
     receiptUrl = publicUrlData.publicUrl;
 
-    const finalPrice = activeOffer ? Math.round(selectedService.price * (1 - activeOffer.discount_percentage / 100)) : selectedService.price;
+    const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+    const finalPrice = activeOffer ? Math.round(totalPrice * (1 - activeOffer.discount_percentage / 100)) : totalPrice;
     const depositAmount = Math.round(finalPrice * 0.1);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -132,7 +133,7 @@ function BookingForm() {
     const result = await createBooking({
       customer_name: name,
       phone_number: phone,
-      service_name: selectedService.name,
+      service_name: selectedServices.map(s => s.name).join(", "),
       booking_date: selectedDate,
       time_slot: selectedTime,
       deposit_amount: depositAmount,
@@ -170,7 +171,7 @@ function BookingForm() {
             </div>
             <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">Request Submitted!</h2>
             <p className="text-gray-400 mb-8 text-sm leading-relaxed">
-              Your booking for <span className="text-white font-bold">{selectedService?.name}</span> is now <span className="text-gold font-bold">Pending Verification</span>. The owner will confirm your appointment once the 10% payment is verified.
+              Your booking for <span className="text-white font-bold">{selectedServices.map(s => s.name).join(", ")}</span> is now <span className="text-gold font-bold">Pending Verification</span>. The owner will confirm your appointment once the 10% payment is verified.
             </p>
             <div className="bg-white/5 p-4 rounded-xl border border-white/10 mb-8 text-left">
               <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Customer Name</p>
@@ -254,31 +255,65 @@ function BookingForm() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredServices.map(s => (
-                      <button 
-                        key={s.id} 
-                        onClick={() => setSelectedService(s)}
-                        className={`p-6 rounded-2xl border text-left transition-all group ${selectedService?.id === s.id ? 'border-gold bg-gold/5 ring-1 ring-gold/20' : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'}`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className={`font-bold tracking-wide transition-colors ${selectedService?.id === s.id ? 'text-gold' : 'text-white'}`}>{s.name}</h3>
-                          {activeOffer ? (
-                            <div className="text-right">
-                              <span className="text-[10px] text-gray-500 line-through block">₹{s.price}</span>
-                              <span className="text-green-400 font-bold">₹{Math.round(s.price * (1 - activeOffer.discount_percentage / 100))}</span>
+                    {filteredServices.map(s => {
+                      const isSelected = selectedServices.some(item => item.id === s.id);
+                      return (
+                        <button 
+                          key={s.id} 
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedServices(prev => prev.filter(item => item.id !== s.id));
+                            } else {
+                              setSelectedServices(prev => [...prev, s]);
+                            }
+                          }}
+                          className={`p-6 rounded-2xl border text-left transition-all group relative ${isSelected ? 'border-gold bg-gold/5 ring-1 ring-gold/20' : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'}`}
+                        >
+                          {isSelected && (
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-gold text-black rounded-full flex items-center justify-center text-[10px] font-black z-10 shadow-lg">
+                              ✓
                             </div>
-                          ) : (
-                            <span className="text-gold font-bold">₹{s.price}</span>
                           )}
-                        </div>
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{s.duration_mins || '60'} MIN</p>
-                      </button>
-                    ))}
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className={`font-bold tracking-wide transition-colors ${isSelected ? 'text-gold' : 'text-white'}`}>{s.name}</h3>
+                            {activeOffer ? (
+                              <div className="text-right">
+                                <span className="text-[10px] text-gray-500 line-through block">₹{s.price}</span>
+                                <span className="text-green-400 font-bold">₹{Math.round(s.price * (1 - activeOffer.discount_percentage / 100))}</span>
+                              </div>
+                            ) : (
+                              <span className="text-gold font-bold">₹{s.price}</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{s.duration_mins || '60'} MIN</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {selectedServices.length > 0 && (
+                  <div className="bg-gold/10 border border-gold/20 p-6 rounded-2xl animate-in zoom-in-95 duration-300">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gold">Selected Services ({selectedServices.length})</h4>
+                      <button onClick={() => setSelectedServices([])} className="text-[9px] text-gray-500 hover:text-white uppercase tracking-widest">Clear All</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {selectedServices.map(s => (
+                        <span key={s.id} className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[9px] font-bold text-gray-300">
+                          {s.name}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                      <span className="text-xs uppercase tracking-widest text-gray-400 font-bold">Total Estimate</span>
+                      <span className="text-xl font-black italic text-white">₹{selectedServices.reduce((sum, s) => sum + s.price, 0)}</span>
+                    </div>
                   </div>
                 )}
 
                 <button 
-                  disabled={!selectedService}
+                  disabled={selectedServices.length === 0}
                   onClick={() => setStep(2)}
                   className="w-full py-5 bg-gold text-black font-black rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-[0.3em] text-[10px] hover:bg-white transition-all shadow-[0_0_20px_rgba(212,175,55,0.2)] mt-8"
                 >
@@ -355,7 +390,8 @@ function BookingForm() {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center">
                   {(() => {
-                    const finalPrice = activeOffer ? Math.round(selectedService.price * (1 - activeOffer.discount_percentage / 100)) : selectedService.price;
+                    const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+                    const finalPrice = activeOffer ? Math.round(totalPrice * (1 - activeOffer.discount_percentage / 100)) : totalPrice;
                     const advancePrice = Math.round(finalPrice * 0.1);
                     return (
                       <>
@@ -367,11 +403,19 @@ function BookingForm() {
                         </div>
 
                         <div className="bg-white/5 border border-white/10 p-6 rounded-2xl mb-8 space-y-4">
+                          <div className="flex justify-between items-center text-sm border-b border-white/5 pb-3">
+                            <span className="text-gray-500 uppercase tracking-widest text-[9px] font-black">Services ({selectedServices.length})</span>
+                            <div className="text-right">
+                              {selectedServices.map(s => (
+                                <div key={s.id} className="text-xs font-bold text-white mb-1">{s.name}</div>
+                              ))}
+                            </div>
+                          </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-500">Total Service Price</span>
+                            <span className="text-gray-500">Total Price</span>
                             {activeOffer ? (
                               <div className="text-right">
-                                <span className="text-gray-500 line-through text-[10px] mr-2">₹{selectedService.price}</span>
+                                <span className="text-gray-500 line-through text-[10px] mr-2">₹{totalPrice}</span>
                                 <span className="text-white font-bold">₹{finalPrice}</span>
                               </div>
                             ) : (
