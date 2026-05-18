@@ -258,7 +258,7 @@ export default function ServicesPage() {
                   ))}
 
                   {/* Dynamic Ritual card to balance masonry column height mismatch - Left Column */}
-                  {activeGender !== 'Men' && isLeftShorter && (
+                  {activeGender === 'Women' && isLeftShorter && (
                     <div className="bg-gradient-to-br from-gold/10 via-black to-white/[0.02] border border-gold/20 p-8 rounded-3xl relative overflow-hidden group shadow-[0_0_50px_rgba(212,175,55,0.05)] mt-6">
                       <div className="absolute -right-12 -top-12 w-48 h-48 bg-gold/10 rounded-full blur-3xl group-hover:bg-gold/20 transition-colors"></div>
                       <span className="text-[10px] text-gold font-black uppercase tracking-[0.3em] mb-2 block">
@@ -369,7 +369,7 @@ export default function ServicesPage() {
                   ))}
 
                   {/* Dynamic Ritual card to balance masonry column height mismatch - Right Column */}
-                  {(activeGender === 'Men' || (activeGender !== 'Men' && !isLeftShorter)) && (
+                  {(activeGender === 'Men' || (activeGender === 'Women' && !isLeftShorter)) && (
                     <div className="bg-gradient-to-br from-gold/10 via-black to-white/[0.02] border border-gold/20 p-8 rounded-3xl relative overflow-hidden group shadow-[0_0_50px_rgba(212,175,55,0.05)] mt-6">
                       <div className="absolute -right-12 -top-12 w-48 h-48 bg-gold/10 rounded-full blur-3xl group-hover:bg-gold/20 transition-colors"></div>
                       <span className="text-[10px] text-gold font-black uppercase tracking-[0.3em] mb-2 block">
